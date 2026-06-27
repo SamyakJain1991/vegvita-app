@@ -17,72 +17,15 @@ You ONLY recommend 100% vegetarian food — no meat, no fish, no eggs.
 ${ingredientSection}
 
 STRICT OUTPUT RULES:
-- Respond ONLY with a valid JSON object. No markdown, no code blocks, no explanation.
-- Generate a FULL 7-DAY meal plan. Each day must have DIFFERENT meals — no repetition across days.
-- Follow this EXACT structure:
+- Respond ONLY with a valid JSON object. No markdown, no code blocks, no preamble, no explanation whatsoever.
+- Generate a FULL 7-DAY meal plan. Each day MUST have completely DIFFERENT meals — zero repetition.
+- Keep item arrays SHORT: max 3 items per meal to stay within token limits.
+- Keep benefit and tip strings SHORT (under 10 words each).
+- Follow this EXACT JSON structure (all 7 days, Monday to Sunday):
 
-{
-  "summary": "Personalized one-line summary",
-  "dailyCalories": 1800,
-  "macros": { "protein": "75g", "carbs": "220g", "fats": "55g", "fiber": "30g" },
-  "hydration": "2.5 litres of water per day",
-  "days": [
-    {
-      "day": 1,
-      "dayName": "Monday",
-      "theme": "High Protein Start",
-      "meals": {
-        "breakfast": {
-          "time": "7:30 AM",
-          "title": "Meal title",
-          "items": [
-            { "name": "Food item", "quantity": "1 bowl", "calories": 180, "benefit": "Short benefit" }
-          ],
-          "totalCalories": 280,
-          "prepTime": "15 mins",
-          "tip": "One practical tip"
-        },
-        "midMorningSnack": {
-          "time": "10:30 AM",
-          "title": "Snack title",
-          "items": [{ "name": "Item", "quantity": "1 piece", "calories": 80, "benefit": "Benefit" }],
-          "totalCalories": 80,
-          "prepTime": "2 mins",
-          "tip": "Tip"
-        },
-        "lunch": {
-          "time": "1:00 PM",
-          "title": "Lunch title",
-          "items": [{ "name": "Item", "quantity": "1 bowl", "calories": 200, "benefit": "Benefit" }],
-          "totalCalories": 480,
-          "prepTime": "30 mins",
-          "tip": "Tip"
-        },
-        "eveningSnack": {
-          "time": "4:30 PM",
-          "title": "Snack title",
-          "items": [{ "name": "Item", "quantity": "1 cup", "calories": 100, "benefit": "Benefit" }],
-          "totalCalories": 100,
-          "prepTime": "5 mins",
-          "tip": "Tip"
-        },
-        "dinner": {
-          "time": "7:30 PM",
-          "title": "Dinner title",
-          "items": [{ "name": "Item", "quantity": "2 roti", "calories": 180, "benefit": "Benefit" }],
-          "totalCalories": 420,
-          "prepTime": "25 mins",
-          "tip": "Tip"
-        }
-      }
-    }
-  ],
-  "weeklyTips": ["Tip 1", "Tip 2", "Tip 3"],
-  "avoidList": ["Item 1", "Item 2", "Item 3"],
-  "shoppingList": ["ingredient 1", "ingredient 2", "ingredient 3"]
-}
+{"summary":"one line","dailyCalories":1800,"macros":{"protein":"75g","carbs":"220g","fats":"55g","fiber":"30g"},"hydration":"2.5 litres per day","days":[{"day":1,"dayName":"Monday","theme":"High Protein Start","meals":{"breakfast":{"time":"7:30 AM","title":"Title","items":[{"name":"Food","quantity":"1 bowl","calories":180,"benefit":"Short benefit"}],"totalCalories":280,"prepTime":"15 mins","tip":"Short tip"},"midMorningSnack":{"time":"10:30 AM","title":"Title","items":[{"name":"Food","quantity":"1 piece","calories":80,"benefit":"Benefit"}],"totalCalories":80,"prepTime":"2 mins","tip":"Tip"},"lunch":{"time":"1:00 PM","title":"Title","items":[{"name":"Food","quantity":"1 bowl","calories":200,"benefit":"Benefit"}],"totalCalories":480,"prepTime":"30 mins","tip":"Tip"},"eveningSnack":{"time":"4:30 PM","title":"Title","items":[{"name":"Food","quantity":"1 cup","calories":100,"benefit":"Benefit"}],"totalCalories":100,"prepTime":"5 mins","tip":"Tip"},"dinner":{"time":"7:30 PM","title":"Title","items":[{"name":"Food","quantity":"2 pieces","calories":180,"benefit":"Benefit"}],"totalCalories":420,"prepTime":"25 mins","tip":"Tip"}}}],"weeklyTips":["Tip1","Tip2","Tip3"],"avoidList":["Item1","Item2","Item3"],"shoppingList":["item1","item2","item3","item4","item5"]}
 
-Generate ALL 7 days (Monday to Sunday) with completely different meals each day.
+Expand this for ALL 7 days with real Indian vegetarian food. Output ONLY the complete JSON.
 
 Key rules:
 - Children (1–12): smaller portions, mild food, more dairy/fruit
@@ -108,8 +51,8 @@ Output ONLY the JSON. Nothing else.`;
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
       body: JSON.stringify({
         model: "llama-3.3-70b-versatile",
-        max_tokens: 6000,
-        temperature: 0.5,
+        max_tokens: 8000,
+        temperature: 0.4,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: `Generate 7-day vegetarian diet plan for: Age ${age}, Gender ${gender}, Goal: ${goal}${availableIngredients ? `, using ONLY these ingredients: ${availableIngredients}` : ""}.` }
