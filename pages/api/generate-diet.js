@@ -144,7 +144,7 @@ export default async function handler(req, res) {
     for (const d of weekPlan) {
       const dayData = await generateOneDay(d.day, d.name, d.theme, profile, ingredientSection);
       days.push(dayData);
-      if (d.day < 7) await sleep(500);
+      if (d.day < 7) await sleep(5000); // 5 sec gap — avoids 12000 TPM rate limit
     }
 
     let dailyCalories = 2000;

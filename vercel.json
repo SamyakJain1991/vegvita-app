@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "pages/api/generate-diet.js": {
+      "maxDuration": 60
+    }
+  }
+}
