@@ -10,7 +10,7 @@ async function callOpenRouter(prompt) {
       "X-Title": "VegVita Diet Agent"
     },
     body: JSON.stringify({
-      model: "meta-llama/llama-3.1-8b-instruct:free",
+      model: "openrouter/auto",
       max_tokens: 8000,
       temperature: 0.3,
       messages: [{ role: "user", content: prompt }]
