@@ -55,9 +55,16 @@ async function callGroq(prompt) {
 function buildDayPrompt(day, profile, ingredientNote, needsWorkout) {
   const { age, gender, goal, weight, height, activityLevel, preferences } = profile;
   
-  return `Indian veg nutritionist. ${ingredientNote}
+  return `You are a STRICT Indian VEGETARIAN nutritionist. 
+ABSOLUTE RULES - NEVER VIOLATE:
+- NO eggs, NO meat, NO fish, NO chicken, NO seafood
+- NO scrambled eggs, NO omelette, NO boiled eggs
+- ONLY plant-based: dal, sabzi, roti, rice, paneer, tofu, curd, fruits, nuts, seeds, sprouts, millets
+- If you suggest eggs or meat, you have FAILED your task
+
+${ingredientNote}
 User: ${age}yr ${gender}, Goal:${goal}, ${weight||"?"}kg/${height||"?"}cm, ${activityLevel}, ${preferences||"none"}.
-Generate meal plan for ${day.name} only. Output ONLY valid JSON, no markdown:
+Generate 100% vegetarian meal plan for ${day.name} only. Output ONLY valid JSON, no markdown:
 {"day":${day.day},"dayName":"${day.name}","theme":"${day.theme}","meals":{"breakfast":{"time":"7:30 AM","title":"TITLE","items":[{"name":"FOOD","quantity":"QTY","calories":200,"benefit":"BENEFIT","nutrition":{"protein":"10g","carbs":"25g","fat":"4g","fiber":"3g"}}],"totalCalories":300,"totalNutrition":{"protein":"15g","carbs":"38g","fat":"7g","fiber":"5g"},"prepTime":"15 mins","tip":"TIP"},"midMorningSnack":{"time":"10:30 AM","title":"TITLE","items":[{"name":"FOOD","quantity":"QTY","calories":80,"benefit":"BENEFIT","nutrition":{"protein":"3g","carbs":"12g","fat":"2g","fiber":"1g"}}],"totalCalories":80,"totalNutrition":{"protein":"3g","carbs":"12g","fat":"2g","fiber":"1g"},"prepTime":"2 mins","tip":"TIP"},"lunch":{"time":"1:00 PM","title":"TITLE","items":[{"name":"FOOD","quantity":"QTY","calories":250,"benefit":"BENEFIT","nutrition":{"protein":"12g","carbs":"32g","fat":"6g","fiber":"4g"}}],"totalCalories":480,"totalNutrition":{"protein":"22g","carbs":"58g","fat":"11g","fiber":"7g"},"prepTime":"30 mins","tip":"TIP"},"eveningSnack":{"time":"4:30 PM","title":"TITLE","items":[{"name":"FOOD","quantity":"QTY","calories":90,"benefit":"BENEFIT","nutrition":{"protein":"4g","carbs":"11g","fat":"2g","fiber":"1g"}}],"totalCalories":90,"totalNutrition":{"protein":"4g","carbs":"11g","fat":"2g","fiber":"1g"},"prepTime":"5 mins","tip":"TIP"},"dinner":{"time":"7:30 PM","title":"TITLE","items":[{"name":"FOOD","quantity":"QTY","calories":190,"benefit":"BENEFIT","nutrition":{"protein":"10g","carbs":"26g","fat":"5g","fiber":"3g"}}],"totalCalories":420,"totalNutrition":{"protein":"19g","carbs":"50g","fat":"9g","fiber":"6g"},"prepTime":"25 mins","tip":"TIP"}},"workout":${needsWorkout ? `{"duration":"40 mins","type":"WORKOUT_TYPE","warmup":{"duration":"5 mins","exercises":["Jumping jacks","Arm circles"]},"mainWorkout":[{"name":"EXERCISE1","sets":3,"reps":"12","rest":"60 sec","tip":"TIP"},{"name":"EXERCISE2","sets":3,"reps":"12","rest":"60 sec","tip":"TIP"}],"cooldown":{"duration":"5 mins","exercises":["Child pose","Hamstring stretch"]},"caloriesBurned":250,"intensity":"Moderate","bestTime":"6-8 AM"}` : "null"}}
 Replace TITLE/FOOD/QTY/BENEFIT/TIP/WORKOUT_TYPE/EXERCISE with real Indian vegetarian content matching goal "${goal}". Output only the JSON object.`;
 }
