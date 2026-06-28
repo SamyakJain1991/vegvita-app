@@ -1,13 +1,33 @@
-// VegVita Final — 3 Groq calls (3+2+2 days), small prompts, always within 6000 TPM
+// VegVita Final Stable — per-day calls, small prompts, JSON repair
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-function parseJSON(raw) {
-  const cleaned = raw.replace(/```json|```/g, "").trim();
+function repairAndParseJSON(raw) {
+  let cleaned = raw.replace(/```json|```/g, "").trim();
   const start = cleaned.indexOf("{");
-  const end = cleaned.lastIndexOf("}");
-  if (start === -1 || end === -1) throw new Error("No JSON found");
-  return JSON.parse(cleaned.slice(start, end + 1));
+  if (start === -1) throw new Error("No JSON found");
+  cleaned = cleaned.slice(start);
+  
+  // Try direct parse first
+  try { return JSON.parse(cleaned); } catch {}
+  
+  // Repair: close unclosed brackets/braces
+  let open = 0, openArr = 0;
+  for (const ch of cleaned) {
+    if (ch === "{") open++;
+    else if (ch === "}") open--;
+    else if (ch === "[") openArr++;
+    else if (ch === "]") openArr--;
+  }
+  
+  // Add missing closing brackets
+  let repaired = cleaned.trimEnd();
+  // Remove trailing comma if any
+  repaired = repaired.replace(/,\s*$/, "");
+  for (let i = 0; i < openArr; i++) repaired += "]";
+  for (let i = 0; i < open; i++) repaired += "}";
+  
+  return JSON.parse(repaired);
 }
 
 async function callGroq(prompt) {
@@ -19,8 +39,8 @@ async function callGroq(prompt) {
     },
     body: JSON.stringify({
       model: "llama-3.1-8b-instant",
-      max_tokens: 4000,
-      temperature: 0.3,
+      max_tokens: 2000,
+      temperature: 0.2,
       messages: [{ role: "user", content: prompt }]
     })
   });
@@ -32,15 +52,14 @@ async function callGroq(prompt) {
   return data.choices?.[0]?.message?.content || "";
 }
 
-function buildPrompt(days, profile, ingredientNote, needsWorkout) {
+function buildDayPrompt(day, profile, ingredientNote, needsWorkout) {
   const { age, gender, goal, weight, height, activityLevel, preferences } = profile;
-  const dayList = days.map(d => `day${d.day}=${d.name}(${d.theme})`).join(",");
-
-  return `Veg Indian nutritionist. ${ingredientNote} User:${age}yr ${gender}, Goal:${goal}, ${weight||"?"}kg, ${height||"?"}cm, ${activityLevel||"moderate"}, ${preferences||"none"}.
-Output ONLY JSON. No markdown. Days: ${dayList}.
-Template(fill ALL days with real Indian food, different each day):
-{"days":[{"day":1,"dayName":"Monday","theme":"T","meals":{"breakfast":{"time":"7:30 AM","title":"T","items":[{"name":"F","quantity":"Q","calories":150,"benefit":"B","nutrition":{"protein":"8g","carbs":"20g","fat":"3g","fiber":"2g"}}],"totalCalories":280,"totalNutrition":{"protein":"12g","carbs":"35g","fat":"6g","fiber":"4g"},"prepTime":"15m","tip":"T"},"midMorningSnack":{"time":"10:30 AM","title":"T","items":[{"name":"F","quantity":"Q","calories":80,"benefit":"B","nutrition":{"protein":"3g","carbs":"12g","fat":"2g","fiber":"1g"}}],"totalCalories":80,"totalNutrition":{"protein":"3g","carbs":"12g","fat":"2g","fiber":"1g"},"prepTime":"2m","tip":"T"},"lunch":{"time":"1:00 PM","title":"T","items":[{"name":"F","quantity":"Q","calories":200,"benefit":"B","nutrition":{"protein":"10g","carbs":"30g","fat":"5g","fiber":"3g"}}],"totalCalories":450,"totalNutrition":{"protein":"20g","carbs":"55g","fat":"10g","fiber":"6g"},"prepTime":"30m","tip":"T"},"eveningSnack":{"time":"4:30 PM","title":"T","items":[{"name":"F","quantity":"Q","calories":90,"benefit":"B","nutrition":{"protein":"4g","carbs":"10g","fat":"2g","fiber":"1g"}}],"totalCalories":90,"totalNutrition":{"protein":"4g","carbs":"10g","fat":"2g","fiber":"1g"},"prepTime":"5m","tip":"T"},"dinner":{"time":"7:30 PM","title":"T","items":[{"name":"F","quantity":"Q","calories":180,"benefit":"B","nutrition":{"protein":"9g","carbs":"25g","fat":"4g","fiber":"3g"}}],"totalCalories":400,"totalNutrition":{"protein":"18g","carbs":"48g","fat":"8g","fiber":"5g"},"prepTime":"25m","tip":"T"}},"workout":${needsWorkout ? `{"duration":"40m","type":"T","warmup":{"duration":"5m","exercises":["Ex1","Ex2"]},"mainWorkout":[{"name":"Ex","sets":3,"reps":"12","rest":"60s","tip":"T"},{"name":"Ex","sets":3,"reps":"12","rest":"60s","tip":"T"}],"cooldown":{"duration":"5m","exercises":["Ex1","Ex2"]},"caloriesBurned":250,"intensity":"Moderate","bestTime":"6-8AM"}` : "null"}}]}
-Fill for goal "${goal}". Output only JSON.`;
+  
+  return `Indian veg nutritionist. ${ingredientNote}
+User: ${age}yr ${gender}, Goal:${goal}, ${weight||"?"}kg/${height||"?"}cm, ${activityLevel}, ${preferences||"none"}.
+Generate meal plan for ${day.name} only. Output ONLY valid JSON, no markdown:
+{"day":${day.day},"dayName":"${day.name}","theme":"${day.theme}","meals":{"breakfast":{"time":"7:30 AM","title":"TITLE","items":[{"name":"FOOD","quantity":"QTY","calories":200,"benefit":"BENEFIT","nutrition":{"protein":"10g","carbs":"25g","fat":"4g","fiber":"3g"}}],"totalCalories":300,"totalNutrition":{"protein":"15g","carbs":"38g","fat":"7g","fiber":"5g"},"prepTime":"15 mins","tip":"TIP"},"midMorningSnack":{"time":"10:30 AM","title":"TITLE","items":[{"name":"FOOD","quantity":"QTY","calories":80,"benefit":"BENEFIT","nutrition":{"protein":"3g","carbs":"12g","fat":"2g","fiber":"1g"}}],"totalCalories":80,"totalNutrition":{"protein":"3g","carbs":"12g","fat":"2g","fiber":"1g"},"prepTime":"2 mins","tip":"TIP"},"lunch":{"time":"1:00 PM","title":"TITLE","items":[{"name":"FOOD","quantity":"QTY","calories":250,"benefit":"BENEFIT","nutrition":{"protein":"12g","carbs":"32g","fat":"6g","fiber":"4g"}}],"totalCalories":480,"totalNutrition":{"protein":"22g","carbs":"58g","fat":"11g","fiber":"7g"},"prepTime":"30 mins","tip":"TIP"},"eveningSnack":{"time":"4:30 PM","title":"TITLE","items":[{"name":"FOOD","quantity":"QTY","calories":90,"benefit":"BENEFIT","nutrition":{"protein":"4g","carbs":"11g","fat":"2g","fiber":"1g"}}],"totalCalories":90,"totalNutrition":{"protein":"4g","carbs":"11g","fat":"2g","fiber":"1g"},"prepTime":"5 mins","tip":"TIP"},"dinner":{"time":"7:30 PM","title":"TITLE","items":[{"name":"FOOD","quantity":"QTY","calories":190,"benefit":"BENEFIT","nutrition":{"protein":"10g","carbs":"26g","fat":"5g","fiber":"3g"}}],"totalCalories":420,"totalNutrition":{"protein":"19g","carbs":"50g","fat":"9g","fiber":"6g"},"prepTime":"25 mins","tip":"TIP"}},"workout":${needsWorkout ? `{"duration":"40 mins","type":"WORKOUT_TYPE","warmup":{"duration":"5 mins","exercises":["Jumping jacks","Arm circles"]},"mainWorkout":[{"name":"EXERCISE1","sets":3,"reps":"12","rest":"60 sec","tip":"TIP"},{"name":"EXERCISE2","sets":3,"reps":"12","rest":"60 sec","tip":"TIP"}],"cooldown":{"duration":"5 mins","exercises":["Child pose","Hamstring stretch"]},"caloriesBurned":250,"intensity":"Moderate","bestTime":"6-8 AM"}` : "null"}}
+Replace TITLE/FOOD/QTY/BENEFIT/TIP/WORKOUT_TYPE/EXERCISE with real Indian vegetarian content matching goal "${goal}". Output only the JSON object.`;
 }
 
 export default async function handler(req, res) {
@@ -51,37 +70,62 @@ export default async function handler(req, res) {
 
   const isKid = parseInt(age) < 13;
   const needsWorkout = !isKid && !goal.includes("Diabetes") && !goal.includes("Heart");
-  const ingredientNote = availableIngredients ? `Use ONLY: ${availableIngredients}.` : `Use common Indian veg ingredients, different each day.`;
+  const ingredientNote = availableIngredients
+    ? `Use ONLY these ingredients: ${availableIngredients}.`
+    : `Use common Indian veg ingredients. Make this day unique.`;
   const profile = { age, gender, goal, weight, height, activityLevel, preferences };
 
-  // 3 small batches — each well under 6000 TPM
-  const batches = [
-    [{ day:1,name:"Monday",theme:"High Protein" }, { day:2,name:"Tuesday",theme:"Energy Boost" }, { day:3,name:"Wednesday",theme:"Light Digestive" }],
-    [{ day:4,name:"Thursday",theme:"Iron Strength" }, { day:5,name:"Friday",theme:"Antioxidant" }],
-    [{ day:6,name:"Saturday",theme:"Indulgent Healthy" }, { day:7,name:"Sunday",theme:"Rest Recovery" }],
+  const weekDays = [
+    { day:1, name:"Monday",    theme:"High Protein" },
+    { day:2, name:"Tuesday",   theme:"Energy Boost" },
+    { day:3, name:"Wednesday", theme:"Light Digestive" },
+    { day:4, name:"Thursday",  theme:"Iron Strength" },
+    { day:5, name:"Friday",    theme:"Antioxidant" },
+    { day:6, name:"Saturday",  theme:"Indulgent Healthy" },
+    { day:7, name:"Sunday",    theme:"Rest Recovery" },
   ];
 
   try {
     const allDays = [];
 
-    for (let i = 0; i < batches.length; i++) {
-      const prompt = buildPrompt(batches[i], profile, ingredientNote, needsWorkout);
-      let raw = "";
+    for (const day of weekDays) {
+      let dayData = null;
+      
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
-          raw = await callGroq(prompt);
+          const prompt = buildDayPrompt(day, profile, ingredientNote, needsWorkout);
+          const raw = await callGroq(prompt);
+          dayData = repairAndParseJSON(raw);
+          // Ensure day number is correct
+          dayData.day = day.day;
+          dayData.dayName = day.name;
           break;
         } catch (e) {
-          if (attempt === 2) throw e;
-          await sleep(4000);
+          if (attempt === 2) {
+            // Use fallback minimal day instead of failing
+            dayData = {
+              day: day.day,
+              dayName: day.name,
+              theme: day.theme,
+              meals: {
+                breakfast: { time:"7:30 AM", title:"Dal Chilla", items:[{name:"Moong Dal Chilla",quantity:"2 pieces",calories:200,benefit:"High protein",nutrition:{protein:"12g",carbs:"24g",fat:"4g",fiber:"3g"}}], totalCalories:280, totalNutrition:{protein:"14g",carbs:"30g",fat:"5g",fiber:"4g"}, prepTime:"15 mins", tip:"Eat fresh" },
+                midMorningSnack: { time:"10:30 AM", title:"Fruit & Nuts", items:[{name:"Banana + Almonds",quantity:"1+10",calories:180,benefit:"Energy boost",nutrition:{protein:"5g",carbs:"28g",fat:"8g",fiber:"3g"}}], totalCalories:180, totalNutrition:{protein:"5g",carbs:"28g",fat:"8g",fiber:"3g"}, prepTime:"2 mins", tip:"Stay hydrated" },
+                lunch: { time:"1:00 PM", title:"Dal Rice Sabzi", items:[{name:"Brown Rice + Dal + Sabzi",quantity:"1 plate",calories:450,benefit:"Complete meal",nutrition:{protein:"18g",carbs:"65g",fat:"8g",fiber:"7g"}}], totalCalories:480, totalNutrition:{protein:"20g",carbs:"68g",fat:"9g",fiber:"8g"}, prepTime:"30 mins", tip:"Chew slowly" },
+                eveningSnack: { time:"4:30 PM", title:"Makhana", items:[{name:"Roasted Makhana",quantity:"1 cup",calories:110,benefit:"Low calorie snack",nutrition:{protein:"4g",carbs:"20g",fat:"1g",fiber:"2g"}}], totalCalories:110, totalNutrition:{protein:"4g",carbs:"20g",fat:"1g",fiber:"2g"}, prepTime:"5 mins", tip:"Avoid fried snacks" },
+                dinner: { time:"7:30 PM", title:"Roti Sabzi", items:[{name:"Whole Wheat Roti + Paneer Sabzi",quantity:"2+1 bowl",calories:380,benefit:"Protein rich dinner",nutrition:{protein:"18g",carbs:"42g",fat:"12g",fiber:"5g"}}], totalCalories:420, totalNutrition:{protein:"20g",carbs:"46g",fat:"13g",fiber:"6g"}, prepTime:"25 mins", tip:"Eat 2hrs before sleep" }
+              },
+              workout: needsWorkout ? { duration:"40 mins", type:"Full Body", warmup:{duration:"5 mins",exercises:["Jumping jacks","Arm circles"]}, mainWorkout:[{name:"Push-ups",sets:3,reps:"12",rest:"60 sec",tip:"Keep back straight"},{name:"Squats",sets:3,reps:"15",rest:"60 sec",tip:"Knees over toes"}], cooldown:{duration:"5 mins",exercises:["Child pose","Hamstring stretch"]}, caloriesBurned:250, intensity:"Moderate", bestTime:"6-8 AM" } : null
+            };
+          } else {
+            await sleep(2000);
+          }
         }
       }
-      const parsed = parseJSON(raw);
-      allDays.push(...(parsed.days || []));
-      if (i < batches.length - 1) await sleep(3000); // 3 sec gap between batches
+      
+      allDays.push(dayData);
+      // Gap between days to avoid rate limit
+      if (day.day < 7) await sleep(1500);
     }
-
-    if (!allDays.length) throw new Error("No days generated");
 
     let dailyCalories=2000, protein="80g", carbs="250g", fats="60g";
     if (goal.includes("Loss"))  { dailyCalories=1600; protein="90g"; carbs="180g"; fats="50g"; }
@@ -95,11 +139,16 @@ export default async function handler(req, res) {
         macros: { protein, carbs, fats, fiber:"35g" },
         hydration: parseInt(age)<12 ? "1.5 litres/day" : "2.5-3 litres/day",
         days: allDays,
-        weeklyTips: ["Rotate grains — jowar, bajra, ragi","Soak legumes overnight","Raw salad with every lunch"],
-        avoidList: ["Maida and white sugar","Packaged snacks","Daily deep-fried food"],
-        shoppingList: ["Dal","Paneer/tofu","Seasonal vegetables","Brown rice/millets","Whole wheat atta","Curd","Nuts","Fruits","Besan"]
+        weeklyTips: [
+          "Rotate grains — jowar, bajra, ragi for variety",
+          "Soak legumes overnight for better digestion",
+          "One raw salad with every lunch for enzymes"
+        ],
+        avoidList: ["Maida and white sugar","Packaged ultra-processed snacks","Deep-fried foods daily"],
+        shoppingList: ["Dal (moong/masoor/chana)","Paneer/tofu","Seasonal vegetables","Brown rice/millets","Whole wheat atta","Curd","Nuts and seeds","Fresh fruits","Besan"]
       }
     });
+
   } catch (err) {
     console.error("Error:", err.message);
     return res.status(500).json({ error: err.message });
