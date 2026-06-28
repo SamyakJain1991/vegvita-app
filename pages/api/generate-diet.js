@@ -19,7 +19,7 @@ async function callGroq(prompt) {
     },
     body: JSON.stringify({
       model: "llama-3.1-8b-instant",
-      max_tokens: 3000,
+      max_tokens: 4000,
       temperature: 0.3,
       messages: [{ role: "user", content: prompt }]
     })
