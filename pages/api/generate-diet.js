@@ -10,7 +10,7 @@ async function callOpenRouter(prompt) {
       "X-Title": "VegVita Diet Agent"
     },
     body: JSON.stringify({
-      model: "openrouter/auto",
+      model: "meta-llama/llama-3.3-70b-instruct:free",
       max_tokens: 8000,
       temperature: 0.3,
       messages: [{ role: "user", content: prompt }]
@@ -23,7 +23,7 @@ async function callOpenRouter(prompt) {
 
 async function callGemini(prompt) {
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -72,16 +72,15 @@ Fill ALL 7 days (Monday-Sunday) with different real Indian vegetarian food each 
   try {
     let raw = "";
 
-    // Try OpenRouter first (free, high limits)
+    // Try Gemini first (primary), fallback to OpenRouter
     try {
-      raw = await callOpenRouter(prompt);
+      raw = await callGemini(prompt);
     } catch (err1) {
-      console.log("OpenRouter failed:", err1.message, "— trying Gemini");
-      // Fallback to Gemini
+      console.log("Gemini failed, trying OpenRouter:", err1.message);
       try {
-        raw = await callGemini(prompt);
+        raw = await callOpenRouter(prompt);
       } catch (err2) {
-        throw new Error(`OpenRouter: ${err1.message} | Gemini: ${err2.message}`);
+        throw new Error(`Gemini: ${err1.message} | OpenRouter: ${err2.message}`);
       }
     }
 
